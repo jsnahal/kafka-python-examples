@@ -24,7 +24,7 @@ def main():
     
 
 def listenToUser(kafkaListener, topic, groupid):
-    excelFilename = './' + topic + '.' + groupid + '.xlsx'
+    baseFilename = './' + topic + '.' + groupid
     while True:
         userReq = input("What next, boss? ")
         if(userReq == 'excel'):
@@ -33,7 +33,16 @@ def listenToUser(kafkaListener, topic, groupid):
                 if(len(jsonlist) == 0):
                     print("no messages yet")
                 else:
-                    jsonlistToExcel(jsonlist, excelFilename)
+                    jsonlistToExcel(jsonlist, baseFilename + '.xlsx')
+            except Exception as e:
+                print(e)
+        elif userReq == 'csv':
+            try:
+                jsonlist = kafkaListener.getMessages()
+                if(len(jsonlist) == 0):
+                    print("no messages yet")
+                else:
+                    jsonlistToCsv(jsonlist, baseFilename + '.csv')
             except Exception as e:
                 print(e)
         elif userReq == 'how many':
@@ -52,6 +61,14 @@ def jsonlistToExcel(jsonlist, excelFilename):
     df = json_normalize(jsonData)
     df.to_excel(excelFilename, index=False)
     print("Outputted %d rows to: %s" % (len(jsonlist), excelFilename))
+    
+def jsonlistToCsv(jsonlist, csvFilename):
+    jsonString = ",".join(jsonlist)
+    jsonString = "[" + jsonString + "]"
+    jsonData = json.loads(jsonString)
+    df = json_normalize(jsonData)
+    df.to_csv(csvFilename, index=False)
+    print("Outputted %d rows to: %s" % (len(jsonlist), csvFilename))
 
 class ListenerThread(threading.Thread):
     __lock = threading.Lock()
