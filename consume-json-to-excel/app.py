@@ -36,7 +36,11 @@ def listenToUser(kafkaListener, topic, groupid):
                     jsonlistToExcel(jsonlist, excelFilename)
             except Exception as e:
                 print(e)
+        elif userReq == 'how many':
+            print("Number of messages read: %d" % (kafkaListener.getMessagesRead()))
         elif userReq == 'exit':
+            kafkaListener.askToDie()
+            kafkaListener.join()
             exit(0)
         else:
             print('unrecognized command: ' + userReq)
@@ -51,6 +55,7 @@ def jsonlistToExcel(jsonlist, excelFilename):
 
 class ListenerThread(threading.Thread):
     __lock = threading.Lock()
+    __askedToDie = False
 
     def __init__(self, brokerlist, topic, groupid):
         threading.Thread.__init__(self)
@@ -63,12 +68,22 @@ class ListenerThread(threading.Thread):
         consumer = KafkaConsumer(self.__topic, bootstrap_servers=self.__brokerlist, group_id=self.__groupid, auto_offset_reset='earliest', enable_auto_commit=True, value_deserializer=lambda x: x.decode('utf-8'))
         for msg in consumer:
             with self.__lock:
+                if self.__askedToDie:
+                    break
                 self.__allMessages.append(msg.value)
+        consumer.close()
 
     def getMessages(self):
         with self.__lock:
             return self.__allMessages.copy()
+            
+    def getMessagesRead(self):
+        with self.__lock:
+            return len(self.__allMessages);
     
-
+    def askToDie(self):
+        with self.__lock:
+            self.__askedToDie = True
+   
 
 main()
